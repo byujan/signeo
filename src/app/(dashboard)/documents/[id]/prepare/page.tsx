@@ -6,6 +6,9 @@ import { PdfViewer } from "@/components/pdf/PdfViewer";
 import { FieldOverlay } from "@/components/pdf/FieldOverlay";
 import { FieldToolbar } from "@/components/pdf/FieldWidget";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/components/ui/toast";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import type { Field, FieldType, Recipient, Document } from "@/types";
 import { ArrowLeft, Save } from "lucide-react";
 
@@ -22,6 +25,7 @@ export default function PreparePage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   const [doc, setDoc] = useState<Document | null>(null);
   const [recipients, setRecipients] = useState<Recipient[]>([]);
@@ -31,6 +35,9 @@ export default function PreparePage() {
   const [pdfUrl, setPdfUrl] = useState("");
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [backConfirmOpen, setBackConfirmOpen] = useState(false);
+
+  usePageTitle(doc ? `Place Fields — Signeo` : "Signeo");
 
   const fetchData = useCallback(async () => {
     const [docRes, recipientsRes, fieldsRes, downloadRes] = await Promise.all([
@@ -58,6 +65,24 @@ export default function PreparePage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Warn on beforeunload when dirty
+  useEffect(() => {
+    if (!dirty) return;
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      e.preventDefault();
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [dirty]);
+
+  function handleBack() {
+    if (dirty) {
+      setBackConfirmOpen(true);
+    } else {
+      router.push(`/documents/${id}`);
+    }
+  }
 
   function addField(type: FieldType) {
     if (!selectedRecipientId) return;
@@ -136,9 +161,10 @@ export default function PreparePage() {
         const savedFields = await res.json();
         setFields(savedFields);
         setDirty(false);
+        toast("success", "Fields saved");
       } else {
         const data = await res.json();
-        alert(data.error || "Save failed");
+        toast("error", data.error || "Save failed");
       }
     } finally {
       setSaving(false);
@@ -147,8 +173,22 @@ export default function PreparePage() {
 
   if (!doc || !pdfUrl) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <p className="text-gray-500">Loading...</p>
+      <div className="space-y-4 animate-pulse">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="h-4 w-32 bg-gray-200 rounded mb-1" />
+            <div className="h-6 w-48 bg-gray-200 rounded" />
+          </div>
+          <div className="h-9 w-28 bg-gray-200 rounded" />
+        </div>
+        <div className="flex flex-col lg:flex-row gap-6">
+          <div className="w-full lg:w-64 space-y-4">
+            <div className="h-4 w-20 bg-gray-200 rounded" />
+            <div className="h-10 w-full bg-gray-200 rounded" />
+            <div className="h-10 w-full bg-gray-200 rounded" />
+          </div>
+          <div className="flex-1 h-[600px] bg-gray-200 rounded" />
+        </div>
       </div>
     );
   }
@@ -158,7 +198,7 @@ export default function PreparePage() {
       <div className="flex items-center justify-between">
         <div>
           <button
-            onClick={() => router.push(`/documents/${id}`)}
+            onClick={handleBack}
             className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-1"
           >
             <ArrowLeft className="h-4 w-4" /> Back to document
@@ -173,9 +213,9 @@ export default function PreparePage() {
         </Button>
       </div>
 
-      <div className="flex gap-6">
+      <div className="flex flex-col lg:flex-row gap-6">
         {/* Sidebar */}
-        <div className="w-64 flex-shrink-0 space-y-6">
+        <div className="w-full lg:w-64 lg:flex-shrink-0 space-y-6">
           {/* Recipient selector */}
           <div className="space-y-2">
             <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wide">
@@ -240,6 +280,17 @@ export default function PreparePage() {
           />
         </div>
       </div>
+
+      {/* Unsaved changes confirm */}
+      <ConfirmDialog
+        open={backConfirmOpen}
+        title="Unsaved Changes"
+        message="You have unsaved changes. Are you sure you want to leave?"
+        confirmLabel="Leave"
+        variant="danger"
+        onConfirm={() => router.push(`/documents/${id}`)}
+        onCancel={() => setBackConfirmOpen(false)}
+      />
     </div>
   );
 }

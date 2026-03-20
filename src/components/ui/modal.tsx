@@ -29,6 +29,7 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
     <dialog
       ref={dialogRef}
       onClose={onClose}
+      aria-labelledby={title ? "modal-title" : undefined}
       className={cn(
         "backdrop:bg-black/50 rounded-xl p-0 shadow-xl max-w-lg w-full",
         className
@@ -37,9 +38,10 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
       <div className="p-6">
         {title && (
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+            <h2 id="modal-title" className="text-lg font-semibold text-gray-900">{title}</h2>
             <button
               onClick={onClose}
+              aria-label="Close"
               className="text-gray-400 hover:text-gray-600 text-xl leading-none"
             >
               &times;

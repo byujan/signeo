@@ -6,6 +6,9 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/badge";
 import { RecipientEditor } from "@/components/documents/RecipientEditor";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/components/ui/toast";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import type { Document, Recipient, AuditEvent } from "@/types";
 import {
   Download,
@@ -24,9 +27,13 @@ interface DocDetail extends Document {
 export default function DocumentDetailPage() {
   const router = useRouter();
   const { id } = useParams<{ id: string }>();
+  const { toast } = useToast();
   const [doc, setDoc] = useState<DocDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState("");
+  const [voidConfirmOpen, setVoidConfirmOpen] = useState(false);
+
+  usePageTitle(doc ? `${doc.title} — Signeo` : "Signeo");
 
   const fetchDoc = useCallback(async () => {
     const res = await fetch(`/api/documents/${id}`);
@@ -46,9 +53,10 @@ export default function DocumentDetailPage() {
       const res = await fetch(`/api/documents/${id}/send`, { method: "POST" });
       if (!res.ok) {
         const data = await res.json();
-        alert(data.error);
+        toast("error", data.error || "Failed to send document");
         return;
       }
+      toast("success", "Document sent for signing");
       fetchDoc();
     } finally {
       setActionLoading("");
@@ -56,14 +64,19 @@ export default function DocumentDetailPage() {
   }
 
   async function handleVoid() {
-    if (!confirm("Void this document? All signing links will be revoked."))
-      return;
     setActionLoading("void");
     try {
-      await fetch(`/api/documents/${id}/void`, { method: "POST" });
+      const res = await fetch(`/api/documents/${id}/void`, { method: "POST" });
+      if (!res.ok) {
+        const data = await res.json();
+        toast("error", data.error || "Failed to void document");
+        return;
+      }
+      toast("success", "Document voided");
       fetchDoc();
     } finally {
       setActionLoading("");
+      setVoidConfirmOpen(false);
     }
   }
 
@@ -77,8 +90,28 @@ export default function DocumentDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <p className="text-gray-500">Loading...</p>
+      <div className="space-y-6 animate-pulse">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div>
+            <div className="h-4 w-16 bg-gray-200 rounded mb-2" />
+            <div className="h-6 w-48 bg-gray-200 rounded mb-1" />
+            <div className="h-4 w-32 bg-gray-200 rounded" />
+          </div>
+          <div className="flex gap-2">
+            <div className="h-8 w-24 bg-gray-200 rounded" />
+            <div className="h-8 w-20 bg-gray-200 rounded" />
+          </div>
+        </div>
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="h-4 w-24 bg-gray-200 rounded mb-3" />
+          <div className="h-10 w-full bg-gray-200 rounded mb-2" />
+          <div className="h-10 w-full bg-gray-200 rounded" />
+        </div>
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="h-4 w-24 bg-gray-200 rounded mb-3" />
+          <div className="h-6 w-full bg-gray-200 rounded mb-2" />
+          <div className="h-6 w-3/4 bg-gray-200 rounded" />
+        </div>
       </div>
     );
   }
@@ -97,7 +130,7 @@ export default function DocumentDetailPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
           <button
             onClick={() => router.push("/dashboard")}
@@ -117,7 +150,7 @@ export default function DocumentDetailPage() {
           </p>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {isDraft && (
             <>
               <Link href={`/documents/${id}/prepare`}>
@@ -140,7 +173,7 @@ export default function DocumentDetailPage() {
             <Button
               variant="danger"
               size="sm"
-              onClick={handleVoid}
+              onClick={() => setVoidConfirmOpen(true)}
               loading={actionLoading === "void"}
             >
               <Ban className="h-4 w-4 mr-1" />
@@ -191,11 +224,11 @@ export default function DocumentDetailPage() {
       </div>
 
       {/* Audit Trail */}
-      {doc.audit_events.length > 0 && (
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <h3 className="text-sm font-medium text-gray-900 mb-3">
-            Activity Log
-          </h3>
+      <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <h3 className="text-sm font-medium text-gray-900 mb-3">
+          Activity Log
+        </h3>
+        {doc.audit_events.length > 0 ? (
           <div className="space-y-2">
             {doc.audit_events.map((event) => (
               <div
@@ -215,8 +248,25 @@ export default function DocumentDetailPage() {
               </div>
             ))}
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="flex items-center gap-2 text-sm text-gray-400 py-2">
+            <Clock className="h-4 w-4" />
+            <span>No activity yet</span>
+          </div>
+        )}
+      </div>
+
+      {/* Void confirm dialog */}
+      <ConfirmDialog
+        open={voidConfirmOpen}
+        title="Void Document"
+        message="Void this document? All signing links will be revoked."
+        confirmLabel="Void Document"
+        variant="danger"
+        onConfirm={handleVoid}
+        onCancel={() => setVoidConfirmOpen(false)}
+        loading={actionLoading === "void"}
+      />
     </div>
   );
 }

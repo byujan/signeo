@@ -6,9 +6,12 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Logo } from "@/components/ui/logo";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function LoginPage() {
   const router = useRouter();
+  usePageTitle("Sign In — Signeo");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -37,9 +40,10 @@ export default function LoginPage() {
 
   return (
     <div className="space-y-6">
-      <div className="text-center">
+      <div className="flex flex-col items-center gap-1">
+        <Logo size={36} showText={false} />
         <h1 className="text-2xl font-bold text-gray-900">Signeo</h1>
-        <p className="mt-1 text-sm text-gray-500">Sign in to your account</p>
+        <p className="text-sm text-gray-500">Sign in to your account</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -51,6 +55,7 @@ export default function LoginPage() {
           onChange={(e) => setEmail(e.target.value)}
           required
           autoFocus
+          autoComplete="email"
         />
         <Input
           id="password"
@@ -59,10 +64,11 @@ export default function LoginPage() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
+          autoComplete="current-password"
         />
 
         {error && (
-          <p className="text-sm text-red-600 bg-red-50 p-2 rounded">{error}</p>
+          <p className="text-sm text-red-600 bg-red-50 p-2 rounded" role="alert">{error}</p>
         )}
 
         <Button type="submit" className="w-full" loading={loading}>
@@ -70,12 +76,19 @@ export default function LoginPage() {
         </Button>
       </form>
 
-      <p className="text-center text-sm text-gray-500">
-        Don&apos;t have an account?{" "}
-        <Link href="/signup" className="text-blue-600 hover:underline">
-          Sign up
-        </Link>
-      </p>
+      <div className="text-center space-y-2">
+        <p className="text-sm text-gray-500">
+          Don&apos;t have an account?{" "}
+          <Link href="/signup" className="text-blue-600 hover:underline">
+            Sign up
+          </Link>
+        </p>
+        <p>
+          <span className="text-sm text-gray-400 cursor-default" title="Coming soon">
+            Forgot password?
+          </span>
+        </p>
+      </div>
     </div>
   );
 }

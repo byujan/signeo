@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
@@ -25,10 +25,22 @@ export function PdfViewer({
   onPageChange,
   onPageDimensions,
   overlay,
-  width = 800,
 }: PdfViewerProps) {
   const [numPages, setNumPages] = useState(0);
   const [loading, setLoading] = useState(true);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [measuredWidth, setMeasuredWidth] = useState<number | undefined>(undefined);
+
+  useEffect(() => {
+    function measure() {
+      if (containerRef.current) {
+        setMeasuredWidth(containerRef.current.clientWidth);
+      }
+    }
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
 
   const onDocumentLoadSuccess = useCallback(
     ({ numPages: n }: { numPages: number }) => {
@@ -46,7 +58,7 @@ export function PdfViewer({
   );
 
   return (
-    <div className="flex flex-col items-center">
+    <div ref={containerRef} className="w-full max-w-[800px] flex flex-col items-center">
       <Document
         file={url}
         onLoadSuccess={onDocumentLoadSuccess}
@@ -59,7 +71,7 @@ export function PdfViewer({
         <div className="relative border border-gray-200 shadow-sm bg-white">
           <Page
             pageNumber={currentPage}
-            width={width}
+            width={measuredWidth}
             onLoadSuccess={onPageLoadSuccess}
             renderAnnotationLayer={false}
             renderTextLayer={false}

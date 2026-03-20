@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FileUpload } from "@/components/documents/FileUpload";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function NewDocumentPage() {
   const router = useRouter();
+  usePageTitle("New Document — Signeo");
   const [title, setTitle] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
@@ -68,7 +70,7 @@ export default function NewDocumentPage() {
         </div>
 
         {error && (
-          <p className="text-sm text-red-600 bg-red-50 p-2 rounded">{error}</p>
+          <p className="text-sm text-red-600 bg-red-50 p-2 rounded" role="alert">{error}</p>
         )}
 
         <div className="flex gap-3">

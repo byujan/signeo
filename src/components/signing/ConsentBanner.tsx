@@ -16,7 +16,7 @@ export function ConsentBanner({
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50">
       <div className="max-w-3xl mx-auto px-4 py-4">
-        <div className="flex items-start gap-4">
+        <div className="flex flex-col sm:flex-row items-start gap-4">
           <div className="flex-1">
             <p className="text-sm text-gray-900 font-medium">
               Electronic Signature Consent
@@ -28,7 +28,7 @@ export function ConsentBanner({
               this document&apos;s terms.
             </p>
           </div>
-          <Button onClick={onAccept} loading={loading} size="lg">
+          <Button onClick={onAccept} loading={loading} size="lg" className="w-full sm:w-auto">
             Adopt &amp; Sign
           </Button>
         </div>

@@ -7,6 +7,8 @@ import { SignaturePad } from "@/components/signing/SignaturePad";
 import { ConsentBanner } from "@/components/signing/ConsentBanner";
 import { Modal } from "@/components/ui/modal";
 import { StatusBadge } from "@/components/ui/badge";
+import { useToast } from "@/components/ui/toast";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import type { SigningSession, Field, FieldType } from "@/types";
 import {
   PenLine,
@@ -16,6 +18,7 @@ import {
   Hash,
   Type,
   Check,
+  Loader2,
 } from "lucide-react";
 
 const FIELD_ICONS: Record<FieldType, React.ReactNode> = {
@@ -31,6 +34,7 @@ export default function SigningPage() {
   const { documentId } = useParams<{ documentId: string }>();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
+  const { toast } = useToast();
 
   const [session, setSession] = useState<SigningSession | null>(null);
   const [error, setError] = useState("");
@@ -43,6 +47,10 @@ export default function SigningPage() {
   );
   const [completing, setCompleting] = useState(false);
   const [completed, setCompleted] = useState(false);
+
+  usePageTitle(
+    session ? `Sign ${session.document.title} — Signeo` : "Signeo"
+  );
 
   const fetchSession = useCallback(async () => {
     if (!token) {
@@ -70,7 +78,8 @@ export default function SigningPage() {
   }, [fetchSession]);
 
   async function saveFieldValue(fieldId: string, value: string) {
-    // Update local state
+    // Optimistic update — keep previous state for rollback
+    const previousFields = fields;
     setFields((prev) =>
       prev.map((f) =>
         f.id === fieldId
@@ -80,11 +89,19 @@ export default function SigningPage() {
     );
 
     // Save to server
-    await fetch(`/api/signing/${documentId}/fields?token=${encodeURIComponent(token!)}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ field_id: fieldId, value }),
-    });
+    const res = await fetch(
+      `/api/signing/${documentId}/fields?token=${encodeURIComponent(token!)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ field_id: fieldId, value }),
+      }
+    );
+
+    if (!res.ok) {
+      setFields(previousFields);
+      toast("error", "Failed to save field value");
+    }
   }
 
   async function handleSignatureCapture(dataUrl: string) {
@@ -106,6 +123,8 @@ export default function SigningPage() {
     if (uploadRes.ok) {
       const { path } = await uploadRes.json();
       await saveFieldValue(sigPadFieldId, path);
+    } else {
+      toast("error", "Failed to upload signature");
     }
 
     setSigPadOpen(false);
@@ -136,7 +155,7 @@ export default function SigningPage() {
         setCompleted(true);
       } else {
         const data = await res.json();
-        alert(data.error || "Failed to complete signing");
+        toast("error", data.error || "Failed to complete signing");
       }
     } finally {
       setCompleting(false);
@@ -161,7 +180,7 @@ export default function SigningPage() {
   if (!session) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <p className="text-gray-500">Loading document...</p>
+        <Loader2 className="h-6 w-6 text-gray-400 animate-spin" />
       </div>
     );
   }
@@ -228,6 +247,7 @@ export default function SigningPage() {
                   <SigningField
                     key={field.id}
                     field={field}
+                    recipientName={session.recipient.name}
                     onClick={() => handleFieldClick(field)}
                     onValueChange={(value) => saveFieldValue(field.id, value)}
                   />
@@ -265,31 +285,38 @@ export default function SigningPage() {
 // Individual signing field component
 function SigningField({
   field,
+  recipientName,
   onClick,
   onValueChange,
 }: {
   field: Field;
+  recipientName: string;
   onClick: () => void;
   onValueChange: (value: string) => void;
 }) {
+  const [editing, setEditing] = useState(false);
+  const [inputValue, setInputValue] = useState(field.value || "");
+
   const isFilled = !!field.value;
-  const baseCls =
-    "absolute border-2 rounded transition-all cursor-pointer";
+  const baseCls = "absolute border-2 rounded transition-all";
   const filledCls = isFilled
     ? "border-green-400 bg-green-50/80"
     : "border-blue-400 bg-blue-50/80 hover:bg-blue-100/80 animate-pulse";
 
+  const fieldStyle = {
+    left: `${field.x}%`,
+    top: `${field.y}%`,
+    width: `${field.width}%`,
+    height: `${field.height}%`,
+  };
+
   // For signature/initials, show image if filled, otherwise prompt
   if (field.type === "signature" || field.type === "initials") {
     return (
-      <div
-        className={`${baseCls} ${filledCls}`}
-        style={{
-          left: `${field.x}%`,
-          top: `${field.y}%`,
-          width: `${field.width}%`,
-          height: `${field.height}%`,
-        }}
+      <button
+        type="button"
+        className={`${baseCls} ${filledCls} cursor-pointer appearance-none text-left`}
+        style={fieldStyle}
         onClick={onClick}
       >
         {isFilled ? (
@@ -303,27 +330,23 @@ function SigningField({
             Click to {field.type === "initials" ? "initial" : "sign"}
           </div>
         )}
-      </div>
+      </button>
     );
   }
 
   // Checkbox
   if (field.type === "checkbox") {
     return (
-      <div
-        className={`${baseCls} ${filledCls} flex items-center justify-center`}
-        style={{
-          left: `${field.x}%`,
-          top: `${field.y}%`,
-          width: `${field.width}%`,
-          height: `${field.height}%`,
-        }}
+      <button
+        type="button"
+        className={`${baseCls} ${filledCls} flex items-center justify-center cursor-pointer appearance-none`}
+        style={fieldStyle}
         onClick={() => onValueChange(field.value === "true" ? "false" : "true")}
       >
         {field.value === "true" && (
           <Check className="h-4 w-4 text-green-600" />
         )}
-      </div>
+      </button>
     );
   }
 
@@ -331,14 +354,10 @@ function SigningField({
   if (field.type === "date") {
     const today = new Date().toLocaleDateString();
     return (
-      <div
-        className={`${baseCls} ${filledCls}`}
-        style={{
-          left: `${field.x}%`,
-          top: `${field.y}%`,
-          width: `${field.width}%`,
-          height: `${field.height}%`,
-        }}
+      <button
+        type="button"
+        className={`${baseCls} ${filledCls} cursor-pointer appearance-none text-left`}
+        style={fieldStyle}
         onClick={() => {
           if (!isFilled) onValueChange(today);
         }}
@@ -350,27 +369,19 @@ function SigningField({
             <span className="text-blue-600">Click to add date</span>
           )}
         </div>
-      </div>
+      </button>
     );
   }
 
-  // Full name — auto-fill
+  // Full name — auto-fill from session recipient name
   if (field.type === "full_name") {
     return (
-      <div
-        className={`${baseCls} ${filledCls}`}
-        style={{
-          left: `${field.x}%`,
-          top: `${field.y}%`,
-          width: `${field.width}%`,
-          height: `${field.height}%`,
-        }}
+      <button
+        type="button"
+        className={`${baseCls} ${filledCls} cursor-pointer appearance-none text-left`}
+        style={fieldStyle}
         onClick={() => {
-          // Name will be available from session context in a real implementation
-          if (!isFilled) {
-            const name = prompt("Enter your full name:");
-            if (name) onValueChange(name);
-          }
+          if (!isFilled) onValueChange(recipientName);
         }}
       >
         <div className="flex items-center h-full px-1 text-xs">
@@ -380,25 +391,53 @@ function SigningField({
             <span className="text-blue-600">Click to add name</span>
           )}
         </div>
+      </button>
+    );
+  }
+
+  // Text field — inline editing
+  if (editing) {
+    return (
+      <div
+        className={`${baseCls} border-blue-500 bg-white`}
+        style={fieldStyle}
+      >
+        <input
+          type="text"
+          className="w-full h-full px-1 text-xs text-gray-900 bg-transparent outline-none"
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onBlur={() => {
+            setEditing(false);
+            if (inputValue.trim()) {
+              onValueChange(inputValue.trim());
+            }
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              setEditing(false);
+              if (inputValue.trim()) {
+                onValueChange(inputValue.trim());
+              }
+            } else if (e.key === "Escape") {
+              setEditing(false);
+              setInputValue(field.value || "");
+            }
+          }}
+          autoFocus
+          placeholder={field.label || "Enter text"}
+        />
       </div>
     );
   }
 
-  // Text field
   return (
     <div
-      className={`${baseCls} ${filledCls}`}
-      style={{
-        left: `${field.x}%`,
-        top: `${field.y}%`,
-        width: `${field.width}%`,
-        height: `${field.height}%`,
-      }}
+      className={`${baseCls} ${filledCls} cursor-pointer`}
+      style={fieldStyle}
       onClick={() => {
-        if (!isFilled) {
-          const value = prompt(field.label || "Enter text:");
-          if (value) onValueChange(value);
-        }
+        setInputValue(field.value || "");
+        setEditing(true);
       }}
     >
       <div className="flex items-center h-full px-1 text-xs">

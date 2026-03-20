@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { LogOut, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Logo } from "@/components/ui/logo";
 
 export function DashboardNav({
   userName,
@@ -25,11 +26,8 @@ export function DashboardNav({
   return (
     <header className="bg-white border-b border-gray-200">
       <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
-        <Link
-          href="/dashboard"
-          className="text-lg font-bold text-gray-900"
-        >
-          Signeo
+        <Link href="/dashboard">
+          <Logo />
         </Link>
 
         <div className="flex items-center gap-3">

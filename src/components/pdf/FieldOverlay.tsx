@@ -117,7 +117,7 @@ export function FieldOverlay({
                   e.stopPropagation();
                   onRemoveField(field.id);
                 }}
-                className="absolute -top-2 -right-2 h-4 w-4 rounded-full bg-red-500 text-white text-xs flex items-center justify-center hover:bg-red-600"
+                className="absolute -top-2 -right-2 h-5 w-5 p-1 rounded-full bg-red-500 text-white text-xs flex items-center justify-center hover:bg-red-600"
               >
                 &times;
               </button>

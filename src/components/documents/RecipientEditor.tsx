@@ -20,12 +20,14 @@ export function RecipientEditor({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [adding, setAdding] = useState(false);
+  const [error, setError] = useState("");
 
   async function addRecipient(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim() || !email.trim()) return;
 
     setAdding(true);
+    setError("");
     try {
       const res = await fetch(`/api/documents/${documentId}/recipients`, {
         method: "POST",
@@ -42,6 +44,9 @@ export function RecipientEditor({
         setName("");
         setEmail("");
         onUpdate();
+      } else {
+        const data = await res.json();
+        setError(data.error || "Failed to add recipient");
       }
     } finally {
       setAdding(false);
@@ -49,11 +54,16 @@ export function RecipientEditor({
   }
 
   async function removeRecipient(recipientId: string) {
-    await fetch(
+    const res = await fetch(
       `/api/documents/${documentId}/recipients?rid=${recipientId}`,
       { method: "DELETE" }
     );
-    onUpdate();
+    if (res.ok) {
+      onUpdate();
+    } else {
+      const data = await res.json().catch(() => ({ error: "Failed to remove recipient" }));
+      setError(data.error || "Failed to remove recipient");
+    }
   }
 
   return (
@@ -106,6 +116,10 @@ export function RecipientEditor({
           <Plus className="h-4 w-4" />
         </Button>
       </form>
+
+      {error && (
+        <p className="text-sm text-red-600" role="alert">{error}</p>
+      )}
     </div>
   );
 }

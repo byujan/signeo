@@ -6,18 +6,28 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Logo } from "@/components/ui/logo";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function SignupPage() {
   const router = useRouter();
+  usePageTitle("Create Account — Signeo");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+
     setLoading(true);
 
     const supabase = createClient();
@@ -41,9 +51,10 @@ export default function SignupPage() {
 
   return (
     <div className="space-y-6">
-      <div className="text-center">
+      <div className="flex flex-col items-center gap-1">
+        <Logo size={36} showText={false} />
         <h1 className="text-2xl font-bold text-gray-900">Signeo</h1>
-        <p className="mt-1 text-sm text-gray-500">Create your account</p>
+        <p className="text-sm text-gray-500">Create your account</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -54,6 +65,7 @@ export default function SignupPage() {
           onChange={(e) => setFullName(e.target.value)}
           required
           autoFocus
+          autoComplete="name"
         />
         <Input
           id="email"
@@ -62,6 +74,7 @@ export default function SignupPage() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
+          autoComplete="email"
         />
         <Input
           id="password"
@@ -71,10 +84,21 @@ export default function SignupPage() {
           onChange={(e) => setPassword(e.target.value)}
           required
           minLength={8}
+          autoComplete="new-password"
+        />
+        <Input
+          id="confirm-password"
+          label="Confirm Password"
+          type="password"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          required
+          minLength={8}
+          autoComplete="new-password"
         />
 
         {error && (
-          <p className="text-sm text-red-600 bg-red-50 p-2 rounded">{error}</p>
+          <p className="text-sm text-red-600 bg-red-50 p-2 rounded" role="alert">{error}</p>
         )}
 
         <Button type="submit" className="w-full" loading={loading}>
