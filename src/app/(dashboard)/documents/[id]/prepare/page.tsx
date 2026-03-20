@@ -24,7 +24,7 @@ const DEFAULT_FIELD_SIZES: Record<FieldType, { width: number; height: number }> 
 export default function PreparePage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const containerRef = useRef<HTMLDivElement>(null);
+  const pageRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   const [doc, setDoc] = useState<Document | null>(null);
@@ -44,7 +44,7 @@ export default function PreparePage() {
       fetch(`/api/documents/${id}`),
       fetch(`/api/documents/${id}/recipients`),
       fetch(`/api/documents/${id}/fields`),
-      fetch(`/api/documents/${id}/download`),
+      fetch(`/api/documents/${id}/download?viewer=1`),
     ]);
 
     if (docRes.ok) setDoc(await docRes.json());
@@ -121,12 +121,19 @@ export default function PreparePage() {
     setDirty(true);
   }
 
+  function handleFieldResize(fieldId: string, width: number, height: number) {
+    setFields((prev) =>
+      prev.map((f) => (f.id === fieldId ? { ...f, width, height } : f))
+    );
+    setDirty(true);
+  }
+
   function handleDrop(e: React.DragEvent) {
     e.preventDefault();
     const fieldId = e.dataTransfer.getData("fieldId");
-    if (!fieldId || !containerRef.current) return;
+    if (!fieldId || !pageRef.current) return;
 
-    const rect = containerRef.current.getBoundingClientRect();
+    const rect = pageRef.current.getBoundingClientRect();
     const offsetX = parseFloat(e.dataTransfer.getData("offsetX")) || 0;
     const offsetY = parseFloat(e.dataTransfer.getData("offsetY")) || 0;
 
@@ -259,7 +266,6 @@ export default function PreparePage() {
         {/* PDF + fields */}
         <div
           className="flex-1"
-          ref={containerRef}
           onDragOver={(e) => e.preventDefault()}
           onDrop={handleDrop}
         >
@@ -267,6 +273,7 @@ export default function PreparePage() {
             url={pdfUrl}
             currentPage={currentPage}
             onPageChange={setCurrentPage}
+            pageRef={pageRef}
             overlay={
               <FieldOverlay
                 fields={fields}
@@ -275,6 +282,7 @@ export default function PreparePage() {
                 mode="edit"
                 onRemoveField={removeField}
                 onFieldMove={handleFieldMove}
+                onFieldResize={handleFieldResize}
               />
             }
           />

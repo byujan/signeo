@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useRef } from "react";
 import type { Field, FieldType, Recipient } from "@/types";
 import {
   PenLine,
@@ -35,6 +36,7 @@ interface FieldOverlayProps {
   onFieldClick?: (field: Field) => void;
   onFieldMove?: (fieldId: string, x: number, y: number) => void;
   onRemoveField?: (fieldId: string) => void;
+  onFieldResize?: (fieldId: string, width: number, height: number) => void;
 }
 
 export function FieldOverlay({
@@ -44,6 +46,7 @@ export function FieldOverlay({
   mode,
   onFieldClick,
   onRemoveField,
+  onFieldResize,
 }: FieldOverlayProps) {
   const pageFields = fields.filter((f) => f.page === currentPage);
 
@@ -56,14 +59,8 @@ export function FieldOverlay({
     if (mode !== "edit") return;
     e.dataTransfer.setData("fieldId", field.id);
     const rect = e.currentTarget.getBoundingClientRect();
-    e.dataTransfer.setData(
-      "offsetX",
-      String(e.clientX - rect.left)
-    );
-    e.dataTransfer.setData(
-      "offsetY",
-      String(e.clientY - rect.top)
-    );
+    e.dataTransfer.setData("offsetX", String(e.clientX - rect.left));
+    e.dataTransfer.setData("offsetY", String(e.clientY - rect.top));
   }
 
   return (
@@ -122,9 +119,98 @@ export function FieldOverlay({
                 &times;
               </button>
             )}
+            {mode === "edit" && onFieldResize && (
+              <ResizeHandle
+                fieldId={field.id}
+                onResize={onFieldResize}
+              />
+            )}
           </div>
         );
       })}
     </>
+  );
+}
+
+function ResizeHandle({
+  fieldId,
+  onResize,
+}: {
+  fieldId: string;
+  onResize: (fieldId: string, width: number, height: number) => void;
+}) {
+  const startRef = useRef<{
+    startX: number;
+    startY: number;
+    startW: number;
+    startH: number;
+    parentW: number;
+    parentH: number;
+  } | null>(null);
+
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      e.stopPropagation();
+      e.preventDefault();
+
+      const fieldEl = (e.target as HTMLElement).closest(
+        "[data-field-resize]"
+      )?.parentElement;
+      if (!fieldEl) return;
+
+      const container = fieldEl.parentElement;
+      if (!container) return;
+
+      const containerRect = container.getBoundingClientRect();
+      const fieldRect = fieldEl.getBoundingClientRect();
+
+      startRef.current = {
+        startX: e.clientX,
+        startY: e.clientY,
+        startW: fieldRect.width,
+        startH: fieldRect.height,
+        parentW: containerRect.width,
+        parentH: containerRect.height,
+      };
+
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    },
+    []
+  );
+
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (!startRef.current) return;
+      e.preventDefault();
+
+      const { startX, startY, startW, startH, parentW, parentH } =
+        startRef.current;
+
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+
+      const newW = Math.max(20, startW + dx);
+      const newH = Math.max(12, startH + dy);
+
+      const widthPct = Math.min(95, (newW / parentW) * 100);
+      const heightPct = Math.min(95, (newH / parentH) * 100);
+
+      onResize(fieldId, widthPct, heightPct);
+    },
+    [fieldId, onResize]
+  );
+
+  const handlePointerUp = useCallback(() => {
+    startRef.current = null;
+  }, []);
+
+  return (
+    <div
+      data-field-resize
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      className="absolute -bottom-1 -right-1 w-3 h-3 bg-white border-2 border-gray-400 rounded-sm cursor-se-resize hover:border-blue-500 hover:bg-blue-50"
+    />
   );
 }

@@ -4,6 +4,10 @@ import { useState, useRef } from "react";
 import { Upload, FileText } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
+const ACCEPTED_TYPES = ["application/pdf"];
+
+const ACCEPT_STRING = ".pdf,application/pdf";
+
 interface FileUploadProps {
   onFileSelect: (file: File) => void;
   file: File | null;
@@ -17,7 +21,7 @@ export function FileUpload({ onFileSelect, file }: FileUploadProps) {
     e.preventDefault();
     setDragOver(false);
     const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile?.type === "application/pdf") {
+    if (droppedFile && ACCEPTED_TYPES.includes(droppedFile.type)) {
       onFileSelect(droppedFile);
     }
   }
@@ -67,13 +71,13 @@ export function FileUpload({ onFileSelect, file }: FileUploadProps) {
     >
       <Upload className="h-8 w-8 text-gray-400 mb-3" />
       <p className="text-sm font-medium text-gray-700">
-        Drop your PDF here or click to browse
+        Drop your file here or click to browse
       </p>
-      <p className="text-xs text-gray-500 mt-1">PDF files up to 10MB</p>
+      <p className="text-xs text-gray-500 mt-1">PDF documents up to 10MB</p>
       <input
         ref={inputRef}
         type="file"
-        accept="application/pdf"
+        accept={ACCEPT_STRING}
         onChange={handleChange}
         className="hidden"
       />

@@ -8,8 +8,19 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://signeo.app"),
   title: "Signeo",
   description: "Simple, secure document signing",
+  openGraph: {
+    title: "Signeo",
+    description: "Simple, secure document signing",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "Signeo",
+    description: "Simple, secure document signing",
+  },
 };
 
 export default function RootLayout({

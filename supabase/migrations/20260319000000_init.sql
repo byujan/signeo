@@ -119,15 +119,24 @@ create or replace function public.handle_new_user()
 returns trigger as $$
 declare
   new_org_id uuid;
+  display_name text;
 begin
+  display_name := coalesce(
+    nullif(new.raw_user_meta_data->>'full_name', ''),
+    nullif(new.raw_user_meta_data->>'name', ''),
+    nullif(new.raw_user_meta_data->>'user_name', ''),
+    nullif(new.raw_user_meta_data->>'preferred_username', ''),
+    split_part(new.email, '@', 1)
+  );
+
   insert into organizations (name) values (
-    coalesce(new.raw_user_meta_data->>'full_name', split_part(new.email, '@', 1)) || '''s Org'
+    display_name || '''s Org'
   ) returning id into new_org_id;
 
   insert into profiles (id, org_id, full_name, email) values (
     new.id,
     new_org_id,
-    coalesce(new.raw_user_meta_data->>'full_name', split_part(new.email, '@', 1)),
+    display_name,
     new.email
   );
 
@@ -155,6 +164,13 @@ create trigger documents_updated_at
 -- ============================================================
 -- Row Level Security
 -- ============================================================
+
+-- Organizations
+alter table organizations enable row level security;
+
+create policy "users read own org"
+  on organizations for select
+  using (id in (select org_id from profiles where id = auth.uid()));
 
 -- Profiles
 alter table profiles enable row level security;
@@ -222,10 +238,6 @@ create policy "sender deletes fields"
 
 -- Audit Events (append-only)
 alter table audit_events enable row level security;
-
-create policy "service inserts audit"
-  on audit_events for insert
-  with check (true);
 
 create policy "sender reads audit"
   on audit_events for select

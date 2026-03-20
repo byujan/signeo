@@ -58,19 +58,23 @@ export default function SigningPage() {
       return;
     }
 
-    const res = await fetch(
-      `/api/signing/${documentId}?token=${encodeURIComponent(token)}`
-    );
+    try {
+      const res = await fetch(
+        `/api/signing/${documentId}?token=${encodeURIComponent(token)}`
+      );
 
-    if (!res.ok) {
-      const data = await res.json();
-      setError(data.error || "Invalid or expired link");
-      return;
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error || "Invalid or expired link");
+        return;
+      }
+
+      const data: SigningSession = await res.json();
+      setSession(data);
+      setFields(data.fields);
+    } catch {
+      setError("Unable to load. Please check your connection and try again.");
     }
-
-    const data: SigningSession = await res.json();
-    setSession(data);
-    setFields(data.fields);
   }, [documentId, token]);
 
   useEffect(() => {
@@ -88,43 +92,52 @@ export default function SigningPage() {
       )
     );
 
-    // Save to server
-    const res = await fetch(
-      `/api/signing/${documentId}/fields?token=${encodeURIComponent(token!)}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ field_id: fieldId, value }),
-      }
-    );
+    try {
+      // Save to server
+      const res = await fetch(
+        `/api/signing/${documentId}/fields?token=${encodeURIComponent(token!)}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ field_id: fieldId, value }),
+        }
+      );
 
-    if (!res.ok) {
+      if (!res.ok) {
+        setFields(previousFields);
+        toast("error", "Failed to save field value");
+      }
+    } catch {
       setFields(previousFields);
-      toast("error", "Failed to save field value");
+      toast("error", "Network error. Please try again.");
     }
   }
 
   async function handleSignatureCapture(dataUrl: string) {
     if (!sigPadFieldId) return;
 
-    // Convert data URL to blob and upload
-    const res = await fetch(dataUrl);
-    const blob = await res.blob();
+    try {
+      // Convert data URL to blob and upload
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
 
-    const formData = new FormData();
-    formData.append("file", blob, "signature.png");
-    formData.append("type", sigPadType);
+      const formData = new FormData();
+      formData.append("file", blob, "signature.png");
+      formData.append("type", sigPadType);
 
-    const uploadRes = await fetch(
-      `/api/signing/${documentId}/signature?token=${encodeURIComponent(token!)}`,
-      { method: "POST", body: formData }
-    );
+      const uploadRes = await fetch(
+        `/api/signing/${documentId}/signature?token=${encodeURIComponent(token!)}`,
+        { method: "POST", body: formData }
+      );
 
-    if (uploadRes.ok) {
-      const { path } = await uploadRes.json();
-      await saveFieldValue(sigPadFieldId, path);
-    } else {
-      toast("error", "Failed to upload signature");
+      if (uploadRes.ok) {
+        const { path } = await uploadRes.json();
+        await saveFieldValue(sigPadFieldId, path);
+      } else {
+        toast("error", "Failed to upload signature");
+      }
+    } catch {
+      toast("error", "Network error. Please try again.");
     }
 
     setSigPadOpen(false);
@@ -198,7 +211,7 @@ export default function SigningPage() {
           </h1>
           <p className="text-sm text-gray-500">
             Thank you, {session.recipient.name}. Your signature has been
-            recorded for &ldquo;{session.document.title}&rdquo;.
+            recorded for &ldquo;{session.document.title}&rdquo;. You may now close this window.
           </p>
         </div>
       </div>

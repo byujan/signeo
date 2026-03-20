@@ -17,7 +17,7 @@ export const fieldSchema = z.object({
   width: z.number().min(1).max(100),
   height: z.number().min(1).max(100),
   required: z.boolean().default(true),
-  label: z.string().max(100).optional(),
+  label: z.string().max(100).nullish(),
 });
 
 export const batchFieldsSchema = z.object({

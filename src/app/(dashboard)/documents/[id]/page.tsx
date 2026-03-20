@@ -17,6 +17,7 @@ import {
   ArrowLeft,
   Settings,
   Clock,
+  Trash2,
 } from "lucide-react";
 
 interface DocDetail extends Document {
@@ -32,6 +33,7 @@ export default function DocumentDetailPage() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState("");
   const [voidConfirmOpen, setVoidConfirmOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   usePageTitle(doc ? `${doc.title} — Signeo` : "Signeo");
 
@@ -77,6 +79,23 @@ export default function DocumentDetailPage() {
     } finally {
       setActionLoading("");
       setVoidConfirmOpen(false);
+    }
+  }
+
+  async function handleDelete() {
+    setActionLoading("delete");
+    try {
+      const res = await fetch(`/api/documents/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json();
+        toast("error", data.error || "Failed to delete document");
+        return;
+      }
+      toast("success", "Document deleted");
+      router.push("/dashboard");
+    } finally {
+      setActionLoading("");
+      setDeleteConfirmOpen(false);
     }
   }
 
@@ -186,6 +205,17 @@ export default function DocumentDetailPage() {
               {doc.status === "completed" ? "Download Signed" : "Download PDF"}
             </Button>
           )}
+          {(isDraft || doc.status === "voided") && (
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={() => setDeleteConfirmOpen(true)}
+              loading={actionLoading === "delete"}
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              Delete
+            </Button>
+          )}
         </div>
       </div>
 
@@ -266,6 +296,18 @@ export default function DocumentDetailPage() {
         onConfirm={handleVoid}
         onCancel={() => setVoidConfirmOpen(false)}
         loading={actionLoading === "void"}
+      />
+
+      {/* Delete confirm dialog */}
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        title="Delete Document"
+        message="Permanently delete this document and all its data? This cannot be undone."
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteConfirmOpen(false)}
+        loading={actionLoading === "delete"}
       />
     </div>
   );

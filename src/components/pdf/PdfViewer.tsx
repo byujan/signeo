@@ -2,13 +2,13 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
-import "react-pdf/dist/Page/AnnotationLayer.css";
-import "react-pdf/dist/Page/TextLayer.css";
+import "react-pdf/dist/esm/Page/AnnotationLayer.css";
+import "react-pdf/dist/esm/Page/TextLayer.css";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 // Configure pdf.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 interface PdfViewerProps {
   url: string;
@@ -17,6 +17,7 @@ interface PdfViewerProps {
   onPageDimensions?: (width: number, height: number) => void;
   overlay?: React.ReactNode;
   width?: number;
+  pageRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 export function PdfViewer({
@@ -25,6 +26,7 @@ export function PdfViewer({
   onPageChange,
   onPageDimensions,
   overlay,
+  pageRef,
 }: PdfViewerProps) {
   const [numPages, setNumPages] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -68,14 +70,16 @@ export function PdfViewer({
           </div>
         }
       >
-        <div className="relative border border-gray-200 shadow-sm bg-white">
-          <Page
-            pageNumber={currentPage}
-            width={measuredWidth}
-            onLoadSuccess={onPageLoadSuccess}
-            renderAnnotationLayer={false}
-            renderTextLayer={false}
-          />
+        <div ref={pageRef} className="relative border border-gray-200 shadow-sm bg-white">
+          {measuredWidth && (
+            <Page
+              pageNumber={currentPage}
+              width={measuredWidth}
+              onLoadSuccess={onPageLoadSuccess}
+              renderAnnotationLayer={false}
+              renderTextLayer={false}
+            />
+          )}
           {/* Field overlay positioned absolutely over the page */}
           {overlay && (
             <div className="absolute inset-0 pointer-events-none">

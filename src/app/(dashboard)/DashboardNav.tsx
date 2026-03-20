@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { LogOut, Plus } from "lucide-react";
+import { LogOut, Plus, UserCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/ui/logo";
 
@@ -38,8 +38,15 @@ export function DashboardNav({
             </Button>
           </Link>
 
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <span className="hidden sm:inline">{userName}</span>
+          <div className="flex items-center gap-1 text-sm text-gray-600">
+            <Link
+              href="/profile"
+              className="flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-gray-100 transition-colors"
+              title="Profile settings"
+            >
+              <UserCircle className="h-5 w-5 text-gray-400" />
+              <span className="hidden sm:inline">{userName}</span>
+            </Link>
             <button
               onClick={handleSignOut}
               className="p-1.5 rounded-md hover:bg-gray-100 text-gray-500"

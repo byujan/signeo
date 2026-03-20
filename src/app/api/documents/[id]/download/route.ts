@@ -12,12 +12,12 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const { userId } = await requireAuth();
+    const { userId, profile } = await requireAuth();
 
     const supabase = await createClient();
     const doc = await queryDocument(supabase, id);
 
-    if (!doc)
+    if (!doc || doc.org_id !== profile.org_id)
       return Response.json({ error: "Not found" }, { status: 404 });
 
     const path =
@@ -31,14 +31,18 @@ export async function GET(
 
     const url = await getSignedUrl("documents", path, 300);
 
-    await logEvent(
-      {
-        documentId: id,
-        actorId: userId,
-        eventType: "pdf.downloaded",
-      },
-      req
-    );
+    // Only log audit event for explicit user downloads, not viewer prefetches
+    const isViewerFetch = req.nextUrl.searchParams.get("viewer") === "1";
+    if (!isViewerFetch) {
+      await logEvent(
+        {
+          documentId: id,
+          actorId: userId,
+          eventType: "pdf.downloaded",
+        },
+        req
+      );
+    }
 
     return Response.json({
       url,
