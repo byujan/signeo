@@ -50,11 +50,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
-  // Redirect root to dashboard or login
-  if (path === "/") {
-    return NextResponse.redirect(
-      new URL(user ? "/dashboard" : "/login", request.url)
-    );
+  // Redirect logged-in users from root to dashboard
+  if (path === "/" && user) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
   return response;
