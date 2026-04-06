@@ -27,8 +27,8 @@ export function SignaturePad({
 
     const canvas = canvasRef.current;
 
-    // Wait for the canvas to be laid out before initializing
-    requestAnimationFrame(() => {
+    function initPad() {
+      if (canvas.offsetWidth === 0) return;
       canvas.width = canvas.offsetWidth * 2;
       canvas.height = canvas.offsetHeight * 2;
       const ctx = canvas.getContext("2d");
@@ -38,10 +38,23 @@ export function SignaturePad({
         backgroundColor: "rgb(255, 255, 255)",
         penColor: "rgb(0, 0, 0)",
       });
+    }
+
+    // Use ResizeObserver to wait until canvas has layout dimensions
+    const observer = new ResizeObserver(() => {
+      if (canvas.offsetWidth > 0 && !padRef.current) {
+        initPad();
+      }
     });
+    observer.observe(canvas);
+
+    // Also try immediately in case it's already laid out
+    initPad();
 
     return () => {
+      observer.disconnect();
       padRef.current?.off();
+      padRef.current = null;
     };
   }, [mode]);
 
