@@ -23,8 +23,12 @@ export function SignaturePad({
   const [typedText, setTypedText] = useState("");
 
   useEffect(() => {
-    if (canvasRef.current && mode === "draw") {
-      const canvas = canvasRef.current;
+    if (!canvasRef.current || mode !== "draw") return;
+
+    const canvas = canvasRef.current;
+
+    // Wait for the canvas to be laid out before initializing
+    requestAnimationFrame(() => {
       canvas.width = canvas.offsetWidth * 2;
       canvas.height = canvas.offsetHeight * 2;
       const ctx = canvas.getContext("2d");
@@ -34,11 +38,11 @@ export function SignaturePad({
         backgroundColor: "rgb(255, 255, 255)",
         penColor: "rgb(0, 0, 0)",
       });
+    });
 
-      return () => {
-        padRef.current?.off();
-      };
-    }
+    return () => {
+      padRef.current?.off();
+    };
   }, [mode]);
 
   const handleSave = useCallback(() => {
