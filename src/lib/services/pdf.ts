@@ -33,7 +33,12 @@ export async function finalizePdf(
   const filledFields = allFields.filter((f) => f.value) as Field[];
 
   // Stamp each field
+  const pageCount = pdfDoc.getPageCount();
   for (const field of filledFields) {
+    if (field.page < 1 || field.page > pageCount) {
+      console.error(`Field ${field.id} references invalid page ${field.page} (document has ${pageCount} pages)`);
+      continue;
+    }
     const page = pdfDoc.getPage(field.page - 1);
     const { width: pw, height: ph } = page.getSize();
 

@@ -25,8 +25,23 @@ export async function POST(
       return Response.json({ error: "File required" }, { status: 400 });
     }
 
+    if (file.size > 2 * 1024 * 1024) {
+      return Response.json({ error: "Signature file must be under 2MB" }, { status: 400 });
+    }
+
     const bytes = await file.arrayBuffer();
-    const ext = file.type === "image/jpeg" ? "jpg" : "png";
+
+    // Validate image magic bytes
+    const header = new Uint8Array(bytes.slice(0, 8));
+    const isPng =
+      header[0] === 0x89 && header[1] === 0x50 && header[2] === 0x4e && header[3] === 0x47;
+    const isJpeg = header[0] === 0xff && header[1] === 0xd8 && header[2] === 0xff;
+
+    if (!isPng && !isJpeg) {
+      return Response.json({ error: "Only PNG and JPEG images are accepted" }, { status: 400 });
+    }
+
+    const ext = isJpeg ? "jpg" : "png";
     const filename = type === "initials" ? `initials.${ext}` : `signature.${ext}`;
     const storagePath = `${documentId}/${recipientId}/${filename}`;
 

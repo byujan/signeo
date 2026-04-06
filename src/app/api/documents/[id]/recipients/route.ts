@@ -45,6 +45,15 @@ export async function POST(
         { status: 400 }
       );
 
+    // Prevent duplicate email on the same document
+    const existing = await queryRecipients(supabase, id);
+    if (existing.some((r) => r.email.toLowerCase() === parsed.email.toLowerCase())) {
+      return Response.json(
+        { error: "This recipient has already been added to the document" },
+        { status: 409 }
+      );
+    }
+
     const { data: recipientData, error } = await supabase
       .from("recipients")
       .insert({

@@ -3,7 +3,7 @@ import { requireAuth } from "@/lib/services/auth";
 import { batchFieldsSchema } from "@/lib/validation/fields";
 import { errorResponse } from "@/lib/utils/errors";
 import { createClient } from "@/lib/supabase/server";
-import { queryDocument, queryFields } from "@/lib/supabase/helpers";
+import { queryDocument, queryFields, queryRecipients } from "@/lib/supabase/helpers";
 
 export async function GET(
   _req: NextRequest,
@@ -44,6 +44,25 @@ export async function PUT(
         { error: "Can only edit fields on draft documents" },
         { status: 400 }
       );
+
+    // Validate all recipient_ids belong to this document
+    const recipients = await queryRecipients(supabase, id);
+    const recipientIds = new Set(recipients.map((r) => r.id));
+    const invalidRecipientIds = parsed.fields.filter((f) => !recipientIds.has(f.recipient_id));
+    if (invalidRecipientIds.length > 0) {
+      return Response.json(
+        { error: "One or more fields reference recipients not on this document" },
+        { status: 400 }
+      );
+    }
+
+    // Validate page numbers
+    if (doc.page_count && parsed.fields.some((f) => f.page < 1 || f.page > doc.page_count!)) {
+      return Response.json(
+        { error: "One or more fields reference invalid page numbers" },
+        { status: 400 }
+      );
+    }
 
     // Delete existing fields and insert new ones
     await supabase.from("fields").delete().eq("document_id", id);

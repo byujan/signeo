@@ -11,6 +11,15 @@ function getResend() {
 
 const FROM = process.env.EMAIL_FROM || "Signeo <onboarding@resend.dev>";
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 export async function sendSigningInvite(params: {
   to: string;
   recipientName: string;
@@ -18,32 +27,28 @@ export async function sendSigningInvite(params: {
   signingUrl: string;
   senderName: string;
 }) {
-  try {
-    await getResend().emails.send({
-      from: FROM,
-      to: params.to,
-      subject: `Please sign: ${params.documentTitle}`,
-      html: `
-        <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
-          <h2 style="color: #111;">Signature requested</h2>
-          <p>Hi ${params.recipientName},</p>
-          <p><strong>${params.senderName}</strong> has asked you to sign
-            <strong>${params.documentTitle}</strong>.</p>
-          <a href="${params.signingUrl}" style="
-            display: inline-block; padding: 12px 24px;
-            background: #2563eb; color: white;
-            text-decoration: none; border-radius: 6px;
-            font-weight: 500; margin: 16px 0;
-          ">Review &amp; Sign</a>
-          <p style="color: #666; font-size: 14px;">
-            This link expires in 7 days. If you didn't expect this email, you can ignore it.
-          </p>
-        </div>
-      `,
-    });
-  } catch (err) {
-    console.error("Failed to send signing invite email:", err);
-  }
+  await getResend().emails.send({
+    from: FROM,
+    to: params.to,
+    subject: `Please sign: ${escapeHtml(params.documentTitle)}`,
+    html: `
+      <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+        <h2 style="color: #111;">Signature requested</h2>
+        <p>Hi ${escapeHtml(params.recipientName)},</p>
+        <p><strong>${escapeHtml(params.senderName)}</strong> has asked you to sign
+          <strong>${escapeHtml(params.documentTitle)}</strong>.</p>
+        <a href="${escapeHtml(params.signingUrl)}" style="
+          display: inline-block; padding: 12px 24px;
+          background: #2563eb; color: white;
+          text-decoration: none; border-radius: 6px;
+          font-weight: 500; margin: 16px 0;
+        ">Review &amp; Sign</a>
+        <p style="color: #666; font-size: 14px;">
+          This link expires in 7 days. If you didn't expect this email, you can ignore it.
+        </p>
+      </div>
+    `,
+  });
 }
 
 export async function sendCompletionNotice(params: {
@@ -56,13 +61,13 @@ export async function sendCompletionNotice(params: {
     await getResend().emails.send({
       from: FROM,
       to: params.to,
-      subject: `Completed: ${params.documentTitle}`,
+      subject: `Completed: ${escapeHtml(params.documentTitle)}`,
       html: `
         <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
           <h2 style="color: #111;">All signatures collected</h2>
-          <p>Hi ${params.senderName},</p>
-          <p>All recipients have signed <strong>${params.documentTitle}</strong>.</p>
-          <a href="${params.dashboardUrl}" style="
+          <p>Hi ${escapeHtml(params.senderName)},</p>
+          <p>All recipients have signed <strong>${escapeHtml(params.documentTitle)}</strong>.</p>
+          <a href="${escapeHtml(params.dashboardUrl)}" style="
             display: inline-block; padding: 12px 24px;
             background: #16a34a; color: white;
             text-decoration: none; border-radius: 6px;

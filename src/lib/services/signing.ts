@@ -190,7 +190,7 @@ export async function completeSigning(
     return { allComplete: false }; // idempotent
   }
 
-  // Verify all required fields are filled
+  // Verify all required fields are filled before marking signed
   const allFields = await adminSelectMany(
     "fields",
     "document_id",
@@ -217,8 +217,8 @@ export async function completeSigning(
     req
   );
 
-  // Mark signed
-  await admin()
+  // Atomically mark recipient as signed — if no rows match, they were already signed (race condition)
+  const { data: updated } = await admin()
     .from("recipients")
     .update({
       status: "signed",
@@ -226,7 +226,14 @@ export async function completeSigning(
       ip_address: ip,
       user_agent: userAgent,
     })
-    .eq("id", recipientId);
+    .eq("id", recipientId)
+    .neq("status", "signed")
+    .select()
+    .single();
+
+  if (!updated) {
+    return { allComplete: false }; // concurrent request already completed this
+  }
 
   await logEvent(
     { documentId, recipientId, eventType: "signing.completed" },
@@ -245,6 +252,12 @@ export async function completeSigning(
   );
 
   if (allSigned) {
+    // Guard: if document is already completed, another request finalized it
+    const docCheck = await adminSelectOne("documents", "id", documentId);
+    if (docCheck?.status === "completed") {
+      return { allComplete: true };
+    }
+
     await finalizePdf(documentId, req);
 
     // Send completion email
